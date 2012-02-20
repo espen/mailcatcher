@@ -83,8 +83,19 @@ class MailCatcher::Web < Sinatra::Base
   get "/messages/:id.plain" do
     id = params[:id].to_i
     if part = MailCatcher::Mail.message_part_plain(id)
-      content_type part["type"], :charset => (part["charset"] || "utf8")
-      part["body"]
+      content_type 'text/html', :charset => (part["charset"] || "utf8")
+      body = part["body"]
+      body.gsub! /[\n]+/, '<br>'
+      body.gsub!(/\b((https?:\/\/|ftps?:\/\/|mailto:|www\.)([A-Za-z0-9\-_=%&@\?\.\/]+))\b/) {
+        match = $1
+        tail  = $3
+        case match
+        when /^www/     then  "<a href=\"http://#{match}\" target=\"_blank\">#{match}</a>"
+        when /^mailto/  then  "<a href=\"#{match}\" target=\"_blank\">#{tail}</a>"
+        else                  "<a href=\"#{match}\" target=\"_blank\">#{match}</a>"
+        end
+      }
+      body
     else
       not_found
     end
